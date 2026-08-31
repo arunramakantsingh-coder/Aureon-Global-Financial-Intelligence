@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client';
 import { Activity, BarChart3, Bell, BrainCircuit, ChevronRight, CircleDollarSign, Database, Globe2, LayoutDashboard, LineChart, Network, Newspaper, Search, ServerCog, ShieldCheck, Sparkles, TrendingUp } from 'lucide-react';
 import './styles.css';
 
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8010/api/v1').replace(/\/$/, '');
+
 const forecasts = [
   { asset: 'USD / INR', type: 'Currency', price: '₹88.42', forecast: '₹89.10 – ₹90.30', probability: '72%', signal: 'Bullish' },
   { asset: 'Gold', type: 'Commodity', price: '$3,421', forecast: '$3,510 – $3,590', probability: '68%', signal: 'Bullish' },
@@ -39,12 +41,11 @@ function DataCenter(){
   const [summary,setSummary]=useState({sources:4,connected_sources:0,instruments:0,observations:0,events:0,provenance_coverage:'100% required'});
 
   useEffect(()=>{
-    const base='http://localhost:8000/api/v1';
     Promise.all([
-      fetch(`${base}/health`).then(r=>r.json()),
-      fetch(`${base}/data/summary`).then(r=>r.json()),
-      fetch(`${base}/data/sources`).then(r=>r.json()),
-      fetch(`${base}/data/entities`).then(r=>r.json())
+      fetch(`${API_BASE}/health`).then(r=>r.json()),
+      fetch(`${API_BASE}/data/summary`).then(r=>r.json()),
+      fetch(`${API_BASE}/data/sources`).then(r=>r.json()),
+      fetch(`${API_BASE}/data/entities`).then(r=>r.json())
     ]).then(([health,s,src,e])=>{
       setApiOnline(health.status==='healthy'); setSummary(s); setSources(src); setEntities(e);
     }).catch(()=>setApiOnline(false));
@@ -53,7 +54,7 @@ function DataCenter(){
   return <>
     <div className="module-banner">
       <div><div className="hero-kicker"><Database size={15}/> M1 · DATA FOUNDATION</div><h2>Aureon Data Center</h2><p>The control plane for every market, macro, corporate and world-event dataset entering Aureon. Provenance and time integrity are mandatory before intelligence is allowed downstream.</p></div>
-      <div className={apiOnline?'api-state online':'api-state'}><span className="dot"/>{apiOnline?'BACKEND API ONLINE':'UI FOUNDATION MODE'}<small>{apiOnline?'localhost:8000':'Start backend to activate API'}</small></div>
+      <div className={apiOnline?'api-state online':'api-state'}><span className="dot"/>{apiOnline?'BACKEND API ONLINE':'UI FOUNDATION MODE'}<small>{apiOnline?API_BASE:`Start backend on port 8010 to activate API`}</small></div>
     </div>
 
     <section className="metrics data-metrics">
