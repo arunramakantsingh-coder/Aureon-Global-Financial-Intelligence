@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: aureon-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: aureon
+      POSTGRES_USER: aureon
+      POSTGRES_PASSWORD: aureon_dev
+    ports:
+      - "5433:5432"
+    volumes:
+      - aureon_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aureon -d aureon"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  aureon_postgres_data:
