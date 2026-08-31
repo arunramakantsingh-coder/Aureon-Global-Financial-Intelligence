@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { createRoot } from 'react-dom/client';
 import { Activity, BarChart3, Bell, BrainCircuit, ChevronRight, CircleDollarSign, Database, Globe2, LayoutDashboard, LineChart, Network, Newspaper, Search, ServerCog, ShieldCheck, Sparkles, TrendingUp } from 'lucide-react';
+import { createRoot } from 'react-dom/client';
 import './styles.css';
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8010/api/v1').replace(/\/$/, '');
@@ -36,56 +36,65 @@ const fallbackEntities = [
 
 function DataCenter(){
   const [apiOnline,setApiOnline]=useState(false);
+  const [dbOnline,setDbOnline]=useState(false);
   const [sources,setSources]=useState(fallbackSources);
   const [entities,setEntities]=useState(fallbackEntities);
-  const [summary,setSummary]=useState({sources:4,connected_sources:0,instruments:0,observations:0,events:0,provenance_coverage:'100% required'});
+  const [instruments,setInstruments]=useState([]);
+  const [summary,setSummary]=useState({sources:4,connected_sources:0,instruments:0,observations:0,events:0,organizations:0,countries:0,provenance_coverage:'100% required'});
 
   useEffect(()=>{
     Promise.all([
       fetch(`${API_BASE}/health`).then(r=>r.json()),
       fetch(`${API_BASE}/data/summary`).then(r=>r.json()),
       fetch(`${API_BASE}/data/sources`).then(r=>r.json()),
-      fetch(`${API_BASE}/data/entities`).then(r=>r.json())
-    ]).then(([health,s,src,e])=>{
-      setApiOnline(health.status==='healthy'); setSummary(s); setSources(src); setEntities(e);
-    }).catch(()=>setApiOnline(false));
+      fetch(`${API_BASE}/data/entities`).then(r=>r.json()),
+      fetch(`${API_BASE}/data/instruments`).then(r=>r.json())
+    ]).then(([health,s,src,e,inst])=>{
+      setApiOnline(health.status==='healthy'||health.status==='degraded');
+      setDbOnline(health.database==='healthy');
+      setSummary(s); setSources(src); setEntities(e); setInstruments(inst);
+    }).catch(()=>{setApiOnline(false);setDbOnline(false)});
   },[]);
 
   return <>
     <div className="module-banner">
       <div><div className="hero-kicker"><Database size={15}/> M1 · DATA FOUNDATION</div><h2>Aureon Data Center</h2><p>The control plane for every market, macro, corporate and world-event dataset entering Aureon. Provenance and time integrity are mandatory before intelligence is allowed downstream.</p></div>
-      <div className={apiOnline?'api-state online':'api-state'}><span className="dot"/>{apiOnline?'BACKEND API ONLINE':'UI FOUNDATION MODE'}<small>{apiOnline?API_BASE:`Start backend on port 8010 to activate API`}</small></div>
+      <div className={apiOnline?'api-state online':'api-state'}><span className="dot"/>{apiOnline?'BACKEND API ONLINE':'UI FOUNDATION MODE'}<small>{apiOnline?`${API_BASE}${dbOnline?' · PostgreSQL ONLINE':' · PostgreSQL OFFLINE'}`:'Start backend on port 8010 to activate API'}</small></div>
     </div>
 
     <section className="metrics data-metrics">
       {[
-        ['Registered sources',summary.sources,'M1 connector registry',Database],
-        ['Connected sources',summary.connected_sources,'External feeds intentionally pending',Activity],
-        ['Instruments',summary.instruments,'Canonical instrument registry',BarChart3],
+        ['Registered sources',summary.sources,'PostgreSQL source registry',Database],
+        ['Connected sources',summary.connected_sources,'External feeds disabled',Activity],
+        ['Instruments',summary.instruments,'Persisted canonical registry',BarChart3],
         ['Observations',summary.observations,summary.provenance_coverage,ShieldCheck]
       ].map(([title,value,sub,Icon])=><div className="metric" key={title}><div className="metric-head"><span>{title}</span><Icon size={17}/></div><div className="metric-value">{value}</div><div className="metric-sub">{sub}</div></div>)}
     </section>
 
     <div className="grid-two data-grid">
-      <section className="panel"><div className="panel-head"><div><div className="panel-title">Source Registry</div><div className="panel-sub">Truthful connector state · no fake live feeds</div></div><div className="demo-tag">M1.1</div></div>
-        <div className="source-table"><div className="source-row source-header"><span>Source</span><span>Domain</span><span>Records</span><span>Status</span></div>{sources.map(s=><div className="source-row" key={s.id}><div><strong>{s.name}</strong><small>{s.freshness}</small></div><span>{s.domain}</span><span className="mono">{Number(s.records).toLocaleString()}</span><span className="foundation-badge">FOUNDATION</span></div>)}</div>
+      <section className="panel"><div className="panel-head"><div><div className="panel-title">Source Registry</div><div className="panel-sub">Persisted in PostgreSQL · no fake live feeds</div></div><div className="demo-tag">M1.2</div></div>
+        <div className="source-table"><div className="source-row source-header"><span>Source</span><span>Domain</span><span>Records</span><span>Status</span></div>{sources.map(s=><div className="source-row" key={s.id}><div><strong>{s.name}</strong><small>{s.freshness}</small></div><span>{s.domain}</span><span className="mono">{Number(s.records).toLocaleString()}</span><span className="foundation-badge">{s.status==='connected'?'CONNECTED':'FOUNDATION'}</span></div>)}</div>
       </section>
 
-      <section className="panel"><div className="panel-head"><div><div className="panel-title">Data Integrity Gate</div><div className="panel-sub">Rules enforced before forecasting</div></div><ShieldCheck size={18}/></div>
-        <div className="gate-list">{[
-          ['Provenance required','Every observation must retain its source.'],
-          ['Event time ≠ ingestion time','Prevents look-ahead contamination.'],
-          ['No silent synthetic values','Estimated data must be explicitly labelled.'],
-          ['Historical replay safe','Only information available at decision time may be used.']
-        ].map(([t,d])=><div className="gate" key={t}><ShieldCheck size={15}/><div><strong>{t}</strong><span>{d}</span></div></div>)}</div>
+      <section className="panel"><div className="panel-head"><div><div className="panel-title">Database Health</div><div className="panel-sub">Persistence layer status</div></div><Database size={18}/></div>
+        <div className="gate-list">
+          <div className="gate"><ShieldCheck size={15}/><div><strong>{dbOnline?'PostgreSQL connected':'PostgreSQL unavailable'}</strong><span>Host port 5433 · database aureon</span></div></div>
+          <div className="gate"><ShieldCheck size={15}/><div><strong>Canonical tables initialized</strong><span>Sources, instruments, markets, organizations, events and observations</span></div></div>
+          <div className="gate"><ShieldCheck size={15}/><div><strong>Seed registry loaded</strong><span>{summary.instruments} instruments · {summary.organizations} organizations · {summary.countries} countries</span></div></div>
+          <div className="gate"><ShieldCheck size={15}/><div><strong>External providers disabled</strong><span>Real feeds will only be enabled after connector validation</span></div></div>
+        </div>
       </section>
     </div>
+
+    <section className="panel entity-panel"><div className="panel-head"><div><div className="panel-title">Canonical Instrument Registry</div><div className="panel-sub">Persisted financial instruments ready for future observations</div></div><BarChart3 size={18}/></div>
+      <div className="source-table instrument-table"><div className="source-row source-header"><span>Symbol</span><span>Name</span><span>Asset class</span><span>Currency</span></div>{instruments.map(i=><div className="source-row" key={i.id}><strong>{i.symbol}</strong><span>{i.name}</span><span>{i.asset_class}</span><span className="mono">{i.currency}</span></div>)}</div>
+    </section>
 
     <section className="panel entity-panel"><div className="panel-head"><div><div className="panel-title">Canonical Entity Model</div><div className="panel-sub">The shared language every Aureon module will use</div></div><ServerCog size={18}/></div>
       <div className="entity-grid">{entities.map(e=><div className="entity-card" key={e.name}><div className="entity-name">{e.name}</div><p>{e.description}</p><small>{e.examples}</small></div>)}</div>
     </section>
 
-    <div className="foundation-flow"><span>PROVIDERS</span><ChevronRight/><span>RAW + PROVENANCE</span><ChevronRight/><span>NORMALIZATION</span><ChevronRight/><span>CANONICAL ENTITIES</span><ChevronRight/><span>INTELLIGENCE</span></div>
+    <div className="foundation-flow"><span>PROVIDERS</span><ChevronRight/><span>RAW + PROVENANCE</span><ChevronRight/><span>POSTGRESQL</span><ChevronRight/><span>CANONICAL ENTITIES</span><ChevronRight/><span>INTELLIGENCE</span></div>
   </>;
 }
 
@@ -100,7 +109,7 @@ function Overview(){return <>
 function App(){
   const [active,setActive]=useState('Overview');
   const nav=[['Overview',LayoutDashboard],['Data Center',Database],['Market Monitor',Activity],['World Events',Globe2],['Forecasts',TrendingUp],['Research',Search],['Knowledge Graph',Network],['Risk Engine',ShieldCheck],['Prediction Ledger',LineChart]];
-  return <div className="app"><aside className="sidebar"><div className="brand"><div className="brand-mark">A</div><div><strong>AUREON</strong><span>GLOBAL INTELLIGENCE</span></div></div><div className="section-label">INTELLIGENCE</div><nav>{nav.map(([label,Icon])=><button key={label} className={active===label?'nav active':'nav'} onClick={()=>setActive(label)}><Icon size={17}/><span>{label}</span>{active===label&&<ChevronRight className="chevron" size={15}/>}</button>)}</nav><div className="sidebar-bottom"><div className="system"><span className="dot"/> M1 foundation active</div><div className="version">Aureon v0.1 · M1 Data Foundation</div></div></aside>
+  return <div className="app"><aside className="sidebar"><div className="brand"><div className="brand-mark">A</div><div><strong>AUREON</strong><span>GLOBAL INTELLIGENCE</span></div></div><div className="section-label">INTELLIGENCE</div><nav>{nav.map(([label,Icon])=><button key={label} className={active===label?'nav active':'nav'} onClick={()=>setActive(label)}><Icon size={17}/><span>{label}</span>{active===label&&<ChevronRight className="chevron" size={15}/>}</button>)}</nav><div className="sidebar-bottom"><div className="system"><span className="dot"/> M1 foundation active</div><div className="version">Aureon v0.2 · M1.2 PostgreSQL</div></div></aside>
   <main className="main"><header className="topbar"><div><div className="eyebrow">GLOBAL MARKET INTELLIGENCE</div><h1>{active}</h1></div><div className="top-actions"><div className="search"><Search size={16}/><span>Search markets, companies, events...</span><kbd>⌘ K</kbd></div><button className="icon-btn"><Bell size={18}/></button><div className="avatar">AS</div></div></header><div className="content">{active==='Data Center'?<DataCenter/>:<Overview/>}<div className="footer-note"><ShieldCheck size={15}/><span><strong>Research mode:</strong> No live trading or investment execution is enabled. Any illustrative market values remain clearly separated from data-backed modules.</span></div></div></main></div>
 }
 
