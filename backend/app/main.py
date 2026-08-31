@@ -34,6 +34,7 @@ def health():
         "status": "healthy",
         "service": "aureon-api",
         "milestone": "M1 Data Foundation",
+        "api_port": 8010,
         "time": datetime.now(timezone.utc).isoformat(),
     }
 
